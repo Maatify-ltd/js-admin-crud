@@ -14,6 +14,38 @@
 
     console.log('🎨 Admin UI Components Library Loading...');
 
+    /**
+     * Escape a value before it is interpolated into generated markup.
+     *
+     * @param {*} value
+     * @returns {string}
+     */
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    const DATA_ATTRIBUTE_NAME = /^data-[A-Za-z0-9_-]+$/;
+    const DATA_ATTRIBUTE_SUFFIX = /^[A-Za-z0-9_-]+$/;
+
+    /**
+     * Accept a data-* attribute name, or fall back to the documented default.
+     *
+     * @param {*} name
+     * @param {string} fallback - a name that already satisfies DATA_ATTRIBUTE_NAME
+     * @returns {string}
+     */
+    function safeDataAttributeName(name, fallback) {
+        if (DATA_ATTRIBUTE_NAME.test(name)) return String(name);
+        console.warn('AdminUIComponents: ignoring invalid data attribute name', name);
+        return fallback;
+    }
+
     // ========================================================================
     // 1. STATUS BADGE RENDERER (Reusable!)
     // ========================================================================
@@ -23,6 +55,9 @@
      * Use in: Languages, Admins, Roles, any module with active/inactive status
      *
      * @param {boolean|number|string} value - Status value
+     * options.dataAttribute must be a valid data-* name; anything else is refused
+     * and the default data-entity-id is used instead.
+     *
      * @param {object} options - Configuration
      * @returns {string} HTML
      */
@@ -37,6 +72,7 @@
         } = options;
 
         const isActive = value === true || value === 1 || value === "1";
+        const attributeName = safeDataAttributeName(dataAttribute, 'data-entity-id');
 
         // Active badge
         if (isActive) {
@@ -45,13 +81,13 @@
                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    ${activeText}
+                    ${escapeHtml(activeText)}
                 </span>
             `;
 
             if (clickable && entityId) {
-                return `<button class="${buttonClass} hover:opacity-75 transition-opacity cursor-pointer"
-                            ${dataAttribute}="${entityId}"
+                return `<button class="${escapeHtml(buttonClass)} hover:opacity-75 transition-opacity cursor-pointer"
+                            ${attributeName}="${escapeHtml(entityId)}"
                             data-current-status="1"
                             title="Click to deactivate">
                     ${badge}
@@ -66,13 +102,13 @@
                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                 </svg>
-                ${inactiveText}
+                ${escapeHtml(inactiveText)}
             </span>
         `;
 
         if (clickable && entityId) {
-            return `<button class="${buttonClass} hover:opacity-75 transition-opacity cursor-pointer"
-                        ${dataAttribute}="${entityId}"
+            return `<button class="${escapeHtml(buttonClass)} hover:opacity-75 transition-opacity cursor-pointer"
+                        ${attributeName}="${escapeHtml(entityId)}"
                         data-current-status="0"
                         title="Click to activate">
                 ${badge}
@@ -103,10 +139,11 @@
         if (!value) return '<span class="text-gray-400 dark:text-gray-500 italic">N/A</span>';
 
         const displayValue = uppercase ? value.toUpperCase() : value;
-        const badge = `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-${color}-100 dark:bg-${color}-900/40 text-${color}-800 dark:text-${color}-400 uppercase">${displayValue}</span>`;
+        const safeColor = escapeHtml(color);
+        const badge = `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-${safeColor}-100 dark:bg-${safeColor}-900/40 text-${safeColor}-800 dark:text-${safeColor}-400 uppercase">${escapeHtml(displayValue)}</span>`;
 
         if (dataField) {
-            return `<div data-field="${dataField}">${badge}</div>`;
+            return `<div data-field="${escapeHtml(dataField)}">${badge}</div>`;
         }
         return badge;
     }
@@ -129,7 +166,7 @@
 
         return `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${bgColor}">
             <span class="mr-1">${arrow}</span>
-            ${value?.toUpperCase() || 'N/A'}
+            ${escapeHtml(value?.toUpperCase() || 'N/A')}
         </span>`;
     }
 
@@ -161,7 +198,9 @@
             lg: 'w-11 h-11 text-base'
         };
 
-        return `<span class="inline-flex items-center justify-center ${sizeClasses[size]} rounded-lg bg-gradient-to-br from-${color}-50 to-${color}-100 dark:from-${color}-900/30 dark:to-${color}-800/30 border border-${color}-200 dark:border-${color}-700 text-${color}-700 dark:text-${color}-400 font-bold shadow-sm">${value}</span>`;
+        const safeColor = escapeHtml(color);
+
+        return `<span class="inline-flex items-center justify-center ${sizeClasses[size]} rounded-lg bg-gradient-to-br from-${safeColor}-50 to-${safeColor}-100 dark:from-${safeColor}-900/30 dark:to-${safeColor}-800/30 border border-${safeColor}-200 dark:border-${safeColor}-700 text-${safeColor}-700 dark:text-${safeColor}-400 font-bold shadow-sm">${escapeHtml(value)}</span>`;
     }
 
     // ========================================================================
@@ -171,6 +210,8 @@
     /**
      * Render icon with fallback placeholder
      * Use in: Languages, Categories, Menu items
+     *
+     * Text parameters are escaped here; only options.fallbackSvg is treated as markup.
      *
      * @param {string} icon - Icon/emoji
      * @param {object} options - Configuration
@@ -189,7 +230,7 @@
         };
 
         if (icon) {
-            return `<span class="flex items-center justify-center ${sizeClasses[size]} rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-base">${icon}</span>`;
+            return `<span class="flex items-center justify-center ${sizeClasses[size]} rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-base">${escapeHtml(icon)}</span>`;
         }
 
         // Fallback placeholder
@@ -211,6 +252,10 @@
     /**
      * Build action button with icon
      * Use in: All modules for action buttons
+     *
+     * Text and attribute values are escaped here; only config.icon is treated as markup.
+     * config.dataAttributes keys must match [A-Za-z0-9_-]+ (the data- prefix is added
+     * here); a key that does not is skipped.
      *
      * @param {object} config - Button configuration
      * @returns {string} HTML
@@ -242,17 +287,21 @@
             orange: 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-200 dark:hover:border-orange-800'
         };
 
-        let dataAttrs = entityId ? `data-entity-id="${entityId}"` : '';
+        let dataAttrs = entityId ? `data-entity-id="${escapeHtml(entityId)}"` : '';
         for (const [key, value] of Object.entries(dataAttributes)) {
-            dataAttrs += ` data-${key}="${value}"`;
+            if (!DATA_ATTRIBUTE_SUFFIX.test(key)) {
+                console.warn('AdminUIComponents: ignoring invalid data attribute name', key);
+                continue;
+            }
+            dataAttrs += ` data-${key}="${escapeHtml(value)}"`;
         }
 
         return `
-            <button class="${cssClass} inline-flex items-center gap-1 px-2 py-1 ${colorClasses[color]} rounded transition-colors text-xs font-medium border border-transparent" 
+            <button class="${escapeHtml(cssClass)} inline-flex items-center gap-1 px-2 py-1 ${colorClasses[color]} rounded transition-colors text-xs font-medium border border-transparent"
                     ${dataAttrs}
-                    title="${title}">
+                    title="${escapeHtml(title)}">
                 ${icon || (iconName ? renderSvgIcon(iconName, { className: iconClass }) : '')}
-                ${text}
+                ${escapeHtml(text)}
             </button>
         `;
     }
@@ -366,12 +415,12 @@
             title = '',
             style = ''
         } = options;
+        if (!Object.prototype.hasOwnProperty.call(CommonSvgPaths, name)) return '';
         const path = CommonSvgPaths[name];
-        if (!path) return '';
-        const titleMarkup = title ? `<title>${title}</title>` : '';
-        const styleMarkup = style ? ` style="${style}"` : '';
+        const titleMarkup = title ? `<title>${escapeHtml(title)}</title>` : '';
+        const styleMarkup = style ? ` style="${escapeHtml(style)}"` : '';
 
-        return `<svg class="${className}"${styleMarkup} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="${title ? 'false' : 'true'}">${titleMarkup}${path}</svg>`;
+        return `<svg class="${escapeHtml(className)}"${styleMarkup} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${escapeHtml(strokeWidth)}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="${title ? 'false' : 'true'}">${titleMarkup}${path}</svg>`;
     }
 
     function hydrateIcons(root = document) {
@@ -393,6 +442,8 @@
     /**
      * Build modal HTML template
      * Use in: All modules
+     *
+     * id and title are escaped here; content, footer and icon are treated as markup.
      *
      * @param {object} config - Modal configuration
      * @returns {string} HTML
@@ -416,10 +467,10 @@
         };
 
         return `
-            <div id="${id}" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 z-50 flex items-center justify-center hidden">
+            <div id="${escapeHtml(id)}" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 z-50 flex items-center justify-center hidden">
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl ${sizeClasses[size]} w-full mx-4 border border-transparent dark:border-gray-700">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">${icon} ${title}</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">${icon} ${escapeHtml(title)}</h3>
                         <button class="close-modal text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -463,10 +514,10 @@
         return `
             <div class="flex justify-end gap-3">
                 <button type="button" class="close-modal px-4 py-2 text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                    ${cancelText}
+                    ${escapeHtml(cancelText)}
                 </button>
                 <button type="submit" class="px-4 py-2 text-white ${submitColorClasses[submitColor]} rounded-lg transition-colors shadow-sm">
-                    ${submitText}
+                    ${escapeHtml(submitText)}
                 </button>
             </div>
         `;
@@ -611,6 +662,7 @@
         hydrateIcons,
 
         // Utilities
+        escapeHtml,
         formatDate,
         setupButtonHandler,
         showConfirmation

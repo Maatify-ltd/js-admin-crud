@@ -398,17 +398,22 @@ if (typeof window !== 'undefined') {
 
             const alert = document.createElement('div');
             alert.className = `fixed top-4 right-4 z-50 ${colorClass} border px-4 py-3 rounded-lg shadow-lg max-w-md animate-slide-in`;
-            alert.innerHTML = `
-            <div class="flex items-center justify-between">
-                <span>${message}</span>
-                <button 
-                    onclick="this.parentElement.parentElement.remove()" 
-                    class="ml-4 text-lg font-bold hover:opacity-75 transition-opacity"
-                >
-                    &times;
-                </button>
-            </div>
-        `;
+
+            const alertRow = document.createElement('div');
+            alertRow.className = 'flex items-center justify-between';
+
+            const alertText = document.createElement('span');
+            alertText.textContent = message === null || message === undefined ? '' : String(message);
+
+            const closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.className = 'ml-4 text-lg font-bold hover:opacity-75 transition-opacity';
+            closeButton.textContent = '\u00d7';
+            closeButton.addEventListener('click', () => alert.remove());
+
+            alertRow.appendChild(alertText);
+            alertRow.appendChild(closeButton);
+            alert.appendChild(alertRow);
 
             document.body.appendChild(alert);
 
