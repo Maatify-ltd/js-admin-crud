@@ -196,7 +196,12 @@ async function refreshTable() {
  * Pure presentation - just displays what it receives
  * @param {object} customRenderers - Optional: { columnKey: (value, row) => html }
  * @param {Set} selectableIds - Optional: Set of IDs that are selectable
- * @param {function} getPaginationInfo - Optional: callback to customize pagination display
+ * @param {function} getPaginationInfo - Optional: callback to customize pagination display.
+ *   Return `{ total, text }` to have the label escaped and rendered as text — prefer
+ *   this. Returning `{ total, info }` instead treats `info` as **trusted HTML** and
+ *   splices it into the table unescaped; a callback that does so owns the escaping of
+ *   every value it interpolates. When both are present, `text` wins. `total` is
+ *   coerced with Number() because it drives the pagination arithmetic.
  */
 function TableComponent(data, columns, rowNames, paginationData, actions = "", withSelection = false, primaryKey = 'id', onSelectionChange = null, customRenderers = {}, selectableIds = null, getPaginationInfo = null) {
     headers = columns;
@@ -214,9 +219,15 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
     let displayTotal, infoText;
     if (getPaginationInfo && typeof getPaginationInfo === 'function') {
         console.log("🎨 Using custom pagination info callback");
-        const customInfo = getPaginationInfo(paginationData, paramsDefault);
-        displayTotal = customInfo.total;
-        infoText = customInfo.info;
+        const customInfo = getPaginationInfo(paginationData, paramsDefault) || {};
+        // Coerced like the default branch: the callback formats numbers that came
+        // from an API response, and this value feeds the pagination arithmetic.
+        displayTotal = Number(customInfo.total) || 0;
+        // `text` is the safe channel and wins when both are present. `info` stays
+        // trusted markup for the callbacks that already build spans (see docblock).
+        infoText = (customInfo.text !== undefined && customInfo.text !== null)
+            ? tableEscapeHtml(customInfo.text)
+            : (customInfo.info || '');
         console.log("📊 Custom info:", customInfo);
     } else {
         console.log("📊 Using default pagination info");
@@ -255,7 +266,7 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
                 <thead>
                     <tr class="border-b-2 border-gray-200 dark:border-gray-600">
                         ${checkboxHeader}
-                        ${columns.map(col => `<th data-key="${col.toLowerCase()}" class="pr-6 pl-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 cursor-pointer  dark:bg-gray-800/80 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors select-none"><span class="flex items-center gap-1">${col}<span class="ml-1 flex flex-col gap-0.5 opacity-40"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-2.5 rotate-[270deg] text-blue-500 dark:text-white  up"><path d="M3 3.732a1.5 1.5 0 0 1 2.305-1.265l6.706 4.267a1.5 1.5 0 0 1 0 2.531l-6.706 4.268A1.5 1.5 0 0 1 3 12.267V3.732Z"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-2.5 rotate-90 text-blue-500 dark:text-white down"><path d="M3 3.732a1.5 1.5 0 0 1 2.305-1.265l6.706 4.267a1.5 1.5 0 0 1 0 2.531l-6.706 4.268A1.5 1.5 0 0 1 3 12.267V3.732Z"/></svg></span></span></th>`).join('')}
+                        ${columns.map(col => `<th data-key="${tableEscapeHtml(String(col ?? '').toLowerCase())}" class="pr-6 pl-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 cursor-pointer  dark:bg-gray-800/80 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors select-none"><span class="flex items-center gap-1">${tableEscapeHtml(col)}<span class="ml-1 flex flex-col gap-0.5 opacity-40"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-2.5 rotate-[270deg] text-blue-500 dark:text-white  up"><path d="M3 3.732a1.5 1.5 0 0 1 2.305-1.265l6.706 4.267a1.5 1.5 0 0 1 0 2.531l-6.706 4.268A1.5 1.5 0 0 1 3 12.267V3.732Z"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-2.5 rotate-90 text-blue-500 dark:text-white down"><path d="M3 3.732a1.5 1.5 0 0 1 2.305-1.265l6.706 4.267a1.5 1.5 0 0 1 0 2.531l-6.706 4.268A1.5 1.5 0 0 1 3 12.267V3.732Z"/></svg></span></span></th>`).join('')}
                     </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-800 "></tbody>

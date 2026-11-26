@@ -30,6 +30,9 @@ The stored-XSS sinks listed in [`../../docs/DESIGN.md`](../../docs/DESIGN.md)
 - Alerts in `data_table.js`, `api_handler.js` and `callback_handler.js` are
   built with `createElement`/`textContent`, and close buttons are wired with
   `addEventListener`. Do not reintroduce inline `onclick`.
+- Column labels are escaped both in the `<th>` text and in `data-key="…"`. The
+  escaped attribute still decodes to the lower-cased label, so `dataset.key`
+  and client-side sorting are unaffected.
 - `select2.js` sets option labels with `textContent`.
 - `admin-ui-components.js` escapes the text and attribute values of its
   builders, and validates `data-*` attribute *names* against an allow-list
@@ -37,11 +40,27 @@ The stored-XSS sinks listed in [`../../docs/DESIGN.md`](../../docs/DESIGN.md)
   `hasOwnProperty`, so `constructor` and `__proto__` do not reach the registry.
 
 **Deliberately still trusted markup, by documented contract:** `customRenderers`
-output in `data_table.js`, and the `icon`, `content`, `footer` and `fallbackSvg`
-arguments of `admin-ui-components.js`. Each is marked in its own docblock. The
-shared builders carry the escaping burden so that a page does not have to
-remember; a page that concatenates raw markup on its own is outside this
-contract.
+output in `data_table.js`, the `info` field of a `getPaginationInfo` result, and
+the `icon`, `content`, `footer` and `fallbackSvg` arguments of
+`admin-ui-components.js`. Each is marked in its own docblock. The shared
+builders carry the escaping burden so that a page does not have to remember; a
+page that concatenates raw markup on its own is outside this contract.
+
+### `getPaginationInfo` — prefer the safe channel
+
+The callback may return either shape:
+
+```js
+return { total, text: `${from} to ${to} of ${count}` };  // escaped, rendered as text
+return { total, info: `<span>${from} to ${to}</span>` }; // TRUSTED HTML, spliced raw
+```
+
+`text` wins when both are present. `info` exists because the callbacks that
+predate this contract already build spans, and silently escaping them would
+strip their markup — but a callback that uses `info` owns the escaping of every
+value it interpolates, including the numbers it reads out of an API response.
+Reach for `text` in anything new. `total` is coerced with `Number()` either way,
+because it feeds the pagination arithmetic.
 
 ## Guard
 
