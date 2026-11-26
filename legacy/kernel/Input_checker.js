@@ -11,14 +11,33 @@ const REGEX = {
 	EMAIL: /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
 };
 
+/**
+ * Escape a value before it is interpolated into generated markup.
+ * Prefixed name: this file runs in the global scope and pages declare their own
+ * escapeHtml, so a bare `const escapeHtml` here would collide with a page's
+ * `function escapeHtml` and kill the page with a SyntaxError.
+ */
+function inputCheckerEscapeHtml(value) {
+	if (value === null || value === undefined) return '';
+	return String(value)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#039;');
+}
+
 // Helper functions
+// `message` is built from DOM attributes the page author controls (placeholder,
+// select-title), and `item.id` from the element id. Both are read back decoded and
+// re-inserted through insertAdjacentHTML, so both are escaped here.
 const createErrorMessage = (item, message) => { 
 
 	item.querySelectorAll(".input-error")?.forEach((icon) => icon.remove());
 	const errorIcon = `<i class="fa-solid error-icon fa-circle-xmark"></i>`;
-	return `<p class="text-red-500 text-sm input-error" id="${item.id}-error">
+	return `<p class="text-red-500 text-sm input-error" id="${inputCheckerEscapeHtml(item.id)}-error">
     ${errorIcon}
-    ${message}
+    ${inputCheckerEscapeHtml(message)}
   </p>`;
 };
 
