@@ -99,12 +99,29 @@ describe('data_table.js default cell rendering', () => {
     const window = loadKernel(['data_table.js'], { body: TABLE_BODY });
     const container = renderTable(
       window,
+      { image: '/media/a.png" onerror="alert(1)' },
+      { columns: ['Image'], keys: ['image'] },
+    );
+
+    const img = container.querySelector('tbody img');
+    // Escaping keeps the whole value inside the attribute, handler and all.
+    expect(img.getAttribute('src')).toBe('/media/a.png" onerror="alert(1)');
+    expect(img.hasAttribute('onerror')).toBe(false);
+  });
+
+  it('refuses an image value that carries no allowed URL scheme', () => {
+    // Behaviour change from S-03: tableSafeUrl() now drops a value whose scheme is
+    // not http(s), protocol-relative, root-relative or data:image. The old build
+    // escaped it and still emitted it; the attribute is now empty instead.
+    const window = loadKernel(['data_table.js'], { body: TABLE_BODY });
+    const container = renderTable(
+      window,
       { image: ATTRIBUTE_PAYLOAD },
       { columns: ['Image'], keys: ['image'] },
     );
 
     const img = container.querySelector('tbody img');
-    expect(img.getAttribute('src')).toBe(ATTRIBUTE_PAYLOAD);
+    expect(img.getAttribute('src')).toBe('');
     expect(img.hasAttribute('onerror')).toBe(false);
   });
 

@@ -22,6 +22,21 @@ let selectableIdsDefault = null;
 let getPaginationInfoDefault = null; // ✅ Add this
 
 /**
+ * Only allow http(s), protocol-relative, root-relative and data:image URLs in a
+ * src attribute. Escaping stops an attribute breakout but says nothing about the
+ * scheme, so this mirrors safeUrl() in src/core/dom.js for the legacy table.
+ * Prefixed name, same reason as tableEscapeHtml below.
+ */
+function tableSafeUrl(value) {
+    const url = String(value ?? '').trim();
+    if (/^(https?:)?\/\//i.test(url) || /^\/(?!\/)/.test(url)
+        || /^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(url)) {
+        return url;
+    }
+    return '';
+}
+
+/**
  * Escape a value before interpolating it into generated markup.
  * Prefixed name: this file runs in the global scope and pages declare their own escapeHtml.
  */
@@ -429,7 +444,7 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
 
                 // Images
                 if (key === "image" || key === "icon") {
-                    return `<td><img src="${tableEscapeHtml(v)}" class="w-12 h-12 object-cover rounded"/></td>`;
+                    return `<td><img src="${tableEscapeHtml(tableSafeUrl(v))}" class="w-12 h-12 object-cover rounded"/></td>`;
                 }
 
                 // Long text (like session IDs)

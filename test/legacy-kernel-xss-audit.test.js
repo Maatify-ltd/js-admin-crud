@@ -192,3 +192,51 @@ describe('S-02 column labels', () => {
     expect(parsed.querySelector('th').textContent).toBe(SCRIPT_PAYLOAD);
   });
 });
+
+// ---------------------------------------------------------------------------
+// S-03 — the image cell's URL scheme
+// ---------------------------------------------------------------------------
+
+describe('S-03 table image URL', () => {
+  function renderImage(window, src) {
+    window.TableComponent([{ image: src }], ['Image'], ['image'], { page: 1, total: 1 });
+    return window.document.querySelector('#table-container tbody img');
+  }
+
+  const REFUSED = [
+    ['a javascript: URL', 'javascript:alert(1)'],
+    ['a vbscript: URL', 'vbscript:msgbox(1)'],
+    ['an html data: URL', 'data:text/html;base64,PHN2Zy9vbmxvYWQ9YWxlcnQoMSk+'],
+    ['a scheme with padding', '  JaVaScRiPt:alert(1)'],
+    ['a relative path with no leading slash', 'javascript:void(0)'],
+  ];
+
+  for (const [label, payload] of REFUSED) {
+    it(`refuses ${label}`, () => {
+      const window = loadKernel(['data_table.js'], { body: TABLE_BODY });
+      const img = renderImage(window, payload);
+      expect(img.getAttribute('src')).toBe('');
+    });
+  }
+
+  const ALLOWED = [
+    ['an https URL', 'https://cdn.test/a.png'],
+    ['a protocol-relative URL', '//cdn.test/a.png'],
+    ['a root-relative path', '/media/a.png'],
+    ['a data:image URL', 'data:image/png;base64,iVBORw0KGgo='],
+  ];
+
+  for (const [label, value] of ALLOWED) {
+    it(`still renders ${label}`, () => {
+      const window = loadKernel(['data_table.js'], { body: TABLE_BODY });
+      expect(renderImage(window, value).getAttribute('src')).toBe(value);
+    });
+  }
+
+  it('still escapes an attribute breakout inside an allowed URL', () => {
+    const window = loadKernel(['data_table.js'], { body: TABLE_BODY });
+    const img = renderImage(window, '/media/a.png" onerror="alert(1)');
+    expect(img.hasAttribute('onerror')).toBe(false);
+    expect(img.getAttribute('src')).toBe('/media/a.png" onerror="alert(1)');
+  });
+});
