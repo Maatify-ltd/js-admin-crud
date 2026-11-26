@@ -135,9 +135,15 @@ function Select2(elementOrSelector, data = [], options = {}) {
                 li.classList.remove('text-gray-700', 'dark:text-gray-200');
             }
 
-            li.innerHTML = `<span>${item.label}</span>`;
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = item.label ?? '';
+            li.appendChild(labelSpan);
+
             if (selected && selected.value === item.value) {
-                 li.innerHTML += `<span class="text-blue-600 dark:text-blue-400 font-bold">&#10003;</span>`; // Checkmark
+                const checkSpan = document.createElement('span');
+                checkSpan.className = 'text-blue-600 dark:text-blue-400 font-bold';
+                checkSpan.textContent = '\u2713'; // Checkmark
+                li.appendChild(checkSpan);
             }
 
             li.addEventListener('click', (e) => {

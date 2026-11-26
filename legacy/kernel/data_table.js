@@ -22,6 +22,20 @@ let selectableIdsDefault = null;
 let getPaginationInfoDefault = null; // ✅ Add this
 
 /**
+ * Escape a value before interpolating it into generated markup.
+ * Prefixed name: this file runs in the global scope and pages declare their own escapeHtml.
+ */
+function tableEscapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
  * Generic API call - sends params as-is
  * @param {object} customRenderers - Optional: { columnKey: (value, row) => html }
  * @param {Set|Array} selectableIds - Optional: Set/Array of IDs that can be selected (if null, all are selectable)
@@ -97,7 +111,8 @@ async function createTable(apiUrl, params, headersArg, rowsArg, withSelection = 
 
         const container = document.querySelector("#table-container");
         if (container) {
-            container.innerHTML = `<div class="bg-white dark:bg-gray-800 text-red-500 dark:text-red-400 rounded-lg p-8 shadow-lg text-center border border-gray-100 dark:border-gray-700"><h3 class="text-lg font-medium text-red-600 dark:text-red-500">Error Loading Data</h3><p class="text-sm text-gray-600 dark:text-gray-400">${error.message}</p><button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">Retry</button></div>`;
+            container.innerHTML = `<div class="bg-white dark:bg-gray-800 text-red-500 dark:text-red-400 rounded-lg p-8 shadow-lg text-center border border-gray-100 dark:border-gray-700"><h3 class="text-lg font-medium text-red-600 dark:text-red-500">Error Loading Data</h3><p class="text-sm text-gray-600 dark:text-gray-400">${tableEscapeHtml(error.message)}</p><button type="button" class="table-retry-btn mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">Retry</button></div>`;
+            container.querySelector(".table-retry-btn")?.addEventListener("click", () => location.reload());
         }
         return { success: false, error: error.message };
     }
@@ -151,7 +166,23 @@ function showAlert(type, message) {
     };
     const el = document.createElement('div');
     el.className = `fixed top-6  left-10 min-w-[300px] z-[99999] ${colors[t]} border px-4 py-3 rounded-lg shadow-lg max-w-md `;
-    el.innerHTML = `<div class="flex items-center justify-between"><span>${message}</span><button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-lg">&times;</button></div>`;
+
+    const alertRow = document.createElement('div');
+    alertRow.className = 'flex items-center justify-between';
+
+    const alertText = document.createElement('span');
+    alertText.textContent = message === null || message === undefined ? '' : String(message);
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'ml-4 text-lg';
+    closeButton.textContent = '\u00d7';
+    closeButton.addEventListener('click', () => el.remove());
+
+    alertRow.appendChild(alertText);
+    alertRow.appendChild(closeButton);
+    el.appendChild(alertRow);
+
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 5000);
 }
@@ -190,8 +221,8 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
     } else {
         console.log("📊 Using default pagination info");
         // Default behavior
-        displayTotal = paginationData.total || data.length || 0;
-        const safePage = paginationData.page || 1;
+        displayTotal = Number(paginationData.total) || data.length || 0;
+        const safePage = Number(paginationData.page) || 1;
         const safePerPage = per_page || 10;
         const firstNumber = safePage === 1 ? 1 : 1 + safePerPage * (safePage - 1);
         const lastItemNumber = Math.min(safePerPage * safePage, displayTotal);
@@ -199,7 +230,7 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
     }
 
     const safeTotal = displayTotal;
-    const safePage = paginationData.page || 1;
+    const safePage = Number(paginationData.page) || 1;
     const safePerPage = per_page || 10;
 
     const container = document.querySelector("#table-container");
@@ -356,7 +387,7 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
             const checkboxCell = withSelection ? `
                 <td class="pl-4">
                     ${isSelectable
-                ? `<input type="checkbox" class="row-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 w-4 h-4 cursor-pointer bg-white dark:bg-gray-700" value="${rowId}" ${isSelected ? 'checked' : ''}>`
+                ? `<input type="checkbox" class="row-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 w-4 h-4 cursor-pointer bg-white dark:bg-gray-700" value="${tableEscapeHtml(rowId)}" ${isSelected ? 'checked' : ''}>`
                 : `<span class="text-gray-300 dark:text-gray-600 text-xs">—</span>`
             }
                 </td>` : '';
@@ -377,7 +408,7 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
                 // Status Badge - basic red/green only
                 if (key.toLowerCase().includes("status")) {
                     const statusClass = v?.toLowerCase() === 'active' ? "bg-green-600" : "bg-red-600";
-                    return `<td><span class="${statusClass} text-white px-3 py-1 rounded-lg text-xs font-medium">${v || 'N/A'}</span></td>`;
+                    return `<td><span class="${statusClass} text-white px-3 py-1 rounded-lg text-xs font-medium">${tableEscapeHtml(v || 'N/A')}</span></td>`;
                 }
 
                 // Empty values
@@ -387,15 +418,15 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
 
                 // Images
                 if (key === "image" || key === "icon") {
-                    return `<td><img src="${v}" class="w-12 h-12 object-cover rounded"/></td>`;
+                    return `<td><img src="${tableEscapeHtml(v)}" class="w-12 h-12 object-cover rounded"/></td>`;
                 }
 
                 // Long text (like session IDs)
                 if (key.toLowerCase().includes("session") && v.length > 15) {
-                    return `<td title="${v}" class="text-sm font-mono">${v.substring(0,12)}...</td>`;
+                    return `<td title="${tableEscapeHtml(v)}" class="text-sm font-mono">${tableEscapeHtml(v.substring(0,12))}...</td>`;
                 }
 
-                return `<td class="pl-3 text-sm">${v}</td>`;
+                return `<td class="pl-3 text-sm">${tableEscapeHtml(v)}</td>`;
             }).join("");
 
             return `<tr class="${rowClass} transition-colors duration-150 hover:bg-blue-200/50 dark:hover:bg-blue-900/20">${checkboxCell}${cells}</tr>`;
@@ -489,7 +520,7 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
     }
 
     function exportExcel() {
-        const html = `<table><tr>${columns.map(c => `<th>${c}</th>`).join("")}</tr>${tableContent.map(r => `<tr>${rowNames.map(k => `<td>${r[k]??""}</td>`).join("")}</tr>`).join("")}</table>`;
+        const html = `<table><tr>${columns.map(c => `<th>${tableEscapeHtml(c)}</th>`).join("")}</tr>${tableContent.map(r => `<tr>${rowNames.map(k => `<td>${tableEscapeHtml(r[k] ?? "")}</td>`).join("")}</tr>`).join("")}</table>`;
         const blob = new Blob([html], {type: "application/vnd.ms-excel"});
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -500,9 +531,49 @@ function TableComponent(data, columns, rowNames, paginationData, actions = "", w
 
     function exportPDF() {
         const w = window.open("", "_blank");
-        const html = `<table border="1"><thead><tr>${columns.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${tableContent.map(r => `<tr>${rowNames.map(k => `<td>${r[k]??""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-        w.document.write(`<html><head><title>PDF</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:6px}th{background:#f4f4f4}</style></head><body><h2>Table</h2>${html}</body></html>`);
-        w.document.close();
+        if (!w) {
+            showAlert('warning', 'Allow pop-ups for this site to print the table');
+            return;
+        }
+
+        const doc = w.document;
+        doc.title = "PDF";
+
+        const style = doc.createElement("style");
+        style.textContent = "body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:6px}th{background:#f4f4f4}";
+        doc.head.appendChild(style);
+
+        const heading = doc.createElement("h2");
+        heading.textContent = "Table";
+        doc.body.appendChild(heading);
+
+        const table = doc.createElement("table");
+        table.setAttribute("border", "1");
+
+        const thead = doc.createElement("thead");
+        const headRow = doc.createElement("tr");
+        columns.forEach(c => {
+            const th = doc.createElement("th");
+            th.textContent = c === null || c === undefined ? "" : String(c);
+            headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        const tbody = doc.createElement("tbody");
+        tableContent.forEach(r => {
+            const tr = doc.createElement("tr");
+            rowNames.forEach(k => {
+                const td = doc.createElement("td");
+                const value = r[k];
+                td.textContent = value === null || value === undefined ? "" : String(value);
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        doc.body.appendChild(table);
         w.print();
     }
 

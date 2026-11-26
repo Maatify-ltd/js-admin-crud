@@ -80,13 +80,24 @@ function showAlert(type, message, duration) {
             d: "Error"
         };
 
-        const html = `
-            <div class="border-l-4 p-4 ${styles[type]} rounded shadow-md relative absolute top-10 left-10  z-9999999 w-150" role="alert">
-                <strong class="font-bold">${titles[type]}:</strong>
-                <span class="block sm:inline">${message}</span>
-            </div>`;
-        
-        container.innerHTML = html;
+        const alertBox = document.createElement('div');
+        alertBox.className = `border-l-4 p-4 ${styles[type]} rounded shadow-md relative absolute top-10 left-10  z-9999999 w-150`;
+        alertBox.setAttribute('role', 'alert');
+
+        const alertTitle = document.createElement('strong');
+        alertTitle.className = 'font-bold';
+        alertTitle.textContent = `${titles[type]}:`;
+
+        const alertText = document.createElement('span');
+        alertText.className = 'block sm:inline';
+        alertText.textContent = message === null || message === undefined ? '' : String(message);
+
+        alertBox.appendChild(alertTitle);
+        alertBox.appendChild(document.createTextNode(' '));
+        alertBox.appendChild(alertText);
+
+        container.innerHTML = '';
+        container.appendChild(alertBox);
         container.style.display = 'block';
 
         setTimeout(() => {
@@ -112,7 +123,7 @@ function showAlert(type, message, duration) {
     if (alertElement) {
         alertElement.style.display = "flex";
         const p = alertElement.querySelector("p");
-        if(p) p.innerHTML = message;
+        if(p) p.textContent = message === null || message === undefined ? '' : String(message);
         else alertElement.textContent = message;
 
         setTimeout(() => {
